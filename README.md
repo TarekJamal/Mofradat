@@ -1,0 +1,2 @@
+# Mofradat
+Ghareeb Mofradat Quran
