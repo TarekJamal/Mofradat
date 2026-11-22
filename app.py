@@ -40,13 +40,12 @@ def query(sql, args=()):
             result = client.execute(sql, args)
             return [dict(row) for row in result.rows]
     else:
-        # الاتصال المحلي (SQLite)
-        con = sqlite3.connect(DB)
-        con.row_factory = sqlite3.Row
-        try:
-            return [dict(r) for r in con.execute(sql, args)]
-        finally:
-            con.close()
+        # إذا لم يجد المتغيرات، اطبعها في السجل لنتأكد
+        print("!!! خطأ: متغيرات Turso غير موجودة أو غير مقروءة !!!")
+        print(f"TURSO_DATABASE_URL: {TURSO_URL}")
+        print(f"TURSO_AUTH_TOKEN: {TURSO_TOKEN}")
+        # لا نعود للملف المحلي، بل نتوقف هنا لنجبر Render على إظهار المشكلة
+        raise ValueError("Turso variables are missing. Please check Render Environment settings.")
 
 def has_asfahany_column():
     """نتحقق مرة واحدة عند بدء التشغيل إذا كان العمود موجوداً"""
