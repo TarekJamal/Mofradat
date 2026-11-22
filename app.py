@@ -123,5 +123,12 @@ def asfahany(word_id):
     resp.headers["Cache-Control"] = "public, max-age=3600"
     return resp
 
+@app.get("/api/debug")
+def debug():
+    if TURSO_URL and TURSO_TOKEN:
+        return {"status": "connected_to_turso", "url_starts_with": TURSO_URL[:10]}
+    else:
+        return {"status": "connected_to_local_sqlite", "db_path": DB}
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
