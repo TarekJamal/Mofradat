@@ -42,14 +42,26 @@ def query(sql, args=()):
         # الاتصال بـ Turso
         with libsql_client.create_client_sync(url=TURSO_URL, auth_token=TURSO_TOKEN) as client:
             result = client.execute(sql, args)
-            return [dict(row) for row in result.rows]
+            # Turso ترجع النتائج كـ list of dicts أو list of lists
+            if not result.rows:
+                return []
+            
+            # إذا كانت النتيجة قاموساً (كما في بعض إصدارات المكتبة)
+            if isinstance(result.rows[0], dict):
+                return result.rows
+            
+            # إذا كانت النتيجة قائمة وتحتاج إلى تحويل باستخدام أسماء الأعمدة
+            # نستخدم result.columns للحصول على أسماء الأعمدة
+            columns = result.columns
+            return [dict(zip(columns, row)) for row in result.rows]
     else:
-        # إذا لم يجد المتغيرات، اطبعها في السجل لنتأكد
-        print("!!! خطأ: متغيرات Turso غير موجودة أو غير مقروءة !!!")
-        print(f"TURSO_DATABASE_URL: {TURSO_URL}")
-        print(f"TURSO_AUTH_TOKEN: {TURSO_TOKEN}")
-        # لا نعود للملف المحلي، بل نتوقف هنا لنجبر Render على إظهار المشكلة
-        raise ValueError("Turso variables are missing. Please check Render Environment settings.")
+        # الاتصال المحلي (SQLite)
+        con = sqlite3.connect(DB)
+        con.row_factory = sqlite3.Row
+        try:
+            return [dict(r) for r in con.execute(sql, args)]
+        finally:
+            con.close()
 
 def has_asfahany_column():
     """نتحقق مرة واحدة عند بدء التشغيل إذا كان العمود موجوداً"""
