@@ -7,6 +7,10 @@ import import_data
 from common import norm
 
 TURSO_URL = os.environ.get("TURSO_DATABASE_URL")
+
+# تحويل الرابط لاستخدام HTTPS بدلاً من WebSocket
+if TURSO_URL and TURSO_URL.startswith("libsql://"):
+    TURSO_URL = TURSO_URL.replace("libsql://", "https://", 1)
 TURSO_TOKEN = os.environ.get("TURSO_AUTH_TOKEN")
 
 BASE = os.path.dirname(os.path.abspath(__file__))
