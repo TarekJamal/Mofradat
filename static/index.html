@@ -4,7 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>غريب القرآن</title>
-<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" type="image/png" href="/icon-192.png">
+<meta name="theme-color" content="#1e3a8a"><link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#eaf1ef;--card:#fff;--ink:#152238;--mut:#5d6b7e;--pri:#1d3b6e;--onpri:#fff;--gold:#b8892b;--line:#d3dfdb;--ok:#1f7a4d;--bad:#b3392f;--soft:#dfe9f5;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -57,6 +59,9 @@ nav button span{font-size:1.3rem;line-height:1.2}
 nav button.on{color:var(--pri);font-weight:700;background:var(--soft)}
 textarea{width:100%;min-height:110px;border-radius:12px;border:2px solid var(--line);background:var(--card);color:var(--ink);padding:10px;font:inherit}
 label{display:block;margin:12px 0 4px;font-weight:600}
+.full{margin:8px 0 0;padding-top:8px;border-top:1px dashed var(--line);font-size:.92rem;color:var(--mut);white-space:pre-wrap}
+.as{margin-top:8px}
+.tg{display:flex;align-items:center;gap:10px;margin:0;font-weight:600}.tg input{width:22px;height:22px;accent-color:var(--pri)}
 .empty{text-align:center;color:var(--mut);padding:30px 10px}
 #toast{position:fixed;bottom:96px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 18px;border-radius:20px;font-size:.9rem;opacity:0;pointer-events:none;transition:opacity .2s;z-index:20}
 #toast.on{opacity:1}
@@ -72,7 +77,7 @@ label{display:block;margin:12px 0 4px;font-weight:600}
 function ld(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}}
 function sv(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
 var D=[];
-var S=Object.assign({fav:{},known:{},rate:.8,theme:''},ld('gq_state')||{});
+var S=Object.assign({fav:{},known:{},rate:.8,theme:'',showA:false},ld('gq_state')||{});
 var tab='search',q='',filt='all',lim=40,fc=null,flip=false,qz=null,score={ok:0,n:0};
 var $=function(s){return document.querySelector(s)};
 function save(){sv('gq_state',S)}
@@ -92,27 +97,36 @@ applyTheme();
 var TABS=[['search','🔍','بحث'],['cards','🃏','بطاقات'],['quiz','✍️','اختبار'],['fav','★','المفضلة'],['set','⚙️','الإعدادات']];
 function nav(){$('#nav').innerHTML=TABS.map(function(t){return'<button data-t="'+t[0]+'" class="'+(tab===t[0]?'on':'')+'"><span>'+t[1]+'</span>'+t[2]+'</button>'}).join('');
   $('#nav').querySelectorAll('button').forEach(function(b){b.onclick=function(){tab=b.dataset.t;render();scrollTo(0,0)}})}
-function cardHtml(it,i){var k=key(it);return'<div class="card"><div class="row"><div class="w">'+esc(it.w)+'</div><div class="act"><button data-sp="'+i+'" aria-label="نطق الكلمة">🔊</button><button data-sm="'+i+'" aria-label="نطق الشرح">🗣</button><button class="fav" data-fv="'+i+'" aria-label="مفضلة">'+(S.fav[k]?'★':'☆')+'</button></div></div><p class="m">'+esc(it.m)+'</p>'+(it.r?'<span class="ref">'+esc(it.r)+'</span> ':'')+(S.known[k]?'<span class="ref">✓ محفوظة</span>':'')+'</div>'}
+var AC={};
+function getA(id,cb){if(AC[id]!=null){cb(AC[id]);return}
+  fetch('/api/asfahany/'+id).then(function(r){return r.json()}).then(function(d){AC[id]=d.a||'لا يوجد شرح مفصل لهذه الكلمة.';cb(AC[id])}).catch(function(){toast('تعذر تحميل الشرح، تأكد من الاتصال')})}
+function toggleA(btn,box,id){var f=box.querySelector('.full');
+  if(f){f.remove();btn.textContent='📖 عرض الشرح الكامل';return}
+  btn.textContent='جارٍ التحميل…';
+  getA(id,function(t){var d=document.createElement('p');d.className='full';d.textContent=t;box.appendChild(d);btn.textContent='🔼 إخفاء الشرح الكامل'})}
+function cardHtml(it,i){var k=key(it);return'<div class="card"><div class="row"><div class="w">'+esc(it.w)+'</div><div class="act"><button data-sp="'+i+'" aria-label="نطق الكلمة">🔊</button><button data-sm="'+i+'" aria-label="نطق الشرح">🗣</button><button class="fav" data-fv="'+i+'" aria-label="مفضلة">'+(S.fav[k]?'★':'☆')+'</button></div></div><p class="m">'+esc(it.m)+'</p>'+(S.showA&&it.i?'<div class="as"><button class="chip" data-as="'+i+'">📖 عرض الشرح الكامل</button></div>':'')+(it.r?'<span class="ref">'+esc(it.r)+'</span> ':'')+(S.known[k]?'<span class="ref">✓ محفوظة</span>':'')+'</div>'}
 function bind(list){
+  document.querySelectorAll('[data-as]').forEach(function(b){b.onclick=function(){toggleA(b,b.parentNode,list[b.dataset.as].i)}});
   document.querySelectorAll('[data-sp]').forEach(function(b){b.onclick=function(){speak(list[b.dataset.sp].w)}});
   document.querySelectorAll('[data-sm]').forEach(function(b){b.onclick=function(){speak(list[b.dataset.sm].m)}});
   document.querySelectorAll('[data-fv]').forEach(function(b){b.onclick=function(){var k=key(list[b.dataset.fv]);if(S.fav[k])delete S.fav[k];else S.fav[k]=1;save();b.textContent=S.fav[k]?'★':'☆'}})}
 function filtered(){var nq=norm(q);return D.filter(function(it){var k=key(it);
   if(filt==='fav'&&!S.fav[k])return false;if(filt==='known'&&!S.known[k])return false;if(filt==='new'&&S.known[k])return false;
-  return!nq||k.indexOf(nq)>-1||norm(it.m).indexOf(nq)>-1})}
+  return!nq||k.indexOf(nq)>-1||it._a.indexOf(nq)>-1})}
 function vSearch(){
   var kn=D.filter(function(i){return S.known[key(i)]}).length,pct=D.length?Math.round(kn/D.length*100):0;
   var day=Math.floor(Date.now()/864e5),dw=D[day%D.length]||D[0];
   var h='';
   if(dw&&!q)h+='<div class="hero"><div class="tag">كلمة اليوم</div><div class="row"><div class="w">'+esc(dw.w)+'</div><div class="act"><button id="dsp" aria-label="نطق">🔊</button></div></div><p>'+esc(dw.m)+'</p></div>';
-  h+='<input class="search" id="q" type="search" placeholder="ابحث بالكلمة أو بالمعنى، بدون تشكيل…" value="'+esc(q)+'" autocomplete="off">';
-  h+='<div class="chips">'+[['all','الكل'],['new','لم أحفظها'],['known','محفوظة'],['fav','★ مفضلة']].map(function(c){return'<button class="chip '+(filt===c[0]?'on':'')+'" data-f="'+c[0]+'">'+c[1]+'</button>'}).join('')+'</div>';
+  h+='<input class="search" id="q" type="search" placeholder="ابحث بالكلمة أو بشرح الأصفهاني، بدون تشكيل…" value="'+esc(q)+'" autocomplete="off">';
+  h+='<div class="chips">'+[['all','الكل'],['new','لم أحفظها'],['known','محفوظة'],['fav','★ مفضلة']].map(function(c){return'<button class="chip '+(filt===c[0]?'on':'')+'" data-f="'+c[0]+'">'+c[1]+'</button>'}).join('')+'<button class="chip '+(S.showA?'on':'')+'" id="ta" aria-pressed="'+(S.showA?'true':'false')+'">📖 شرح الأصفهاني</button></div>';
   h+='<div class="stat">حفظت '+kn+' من '+D.length+' كلمة ('+pct+'٪)</div><div class="bar"><i style="width:'+pct+'%"></i></div>';
   var L=filtered();h+='<div id="list">'+(L.length?L.slice(0,lim).map(function(it,i){return cardHtml(it,i)}).join(''):'<div class="empty">لا توجد نتائج. جرّب كلمة أخرى.</div>')+'</div>';
   if(L.length>lim)h+='<button class="btn alt" id="more" style="width:100%;margin-top:6px">عرض المزيد ('+(L.length-lim)+')</button>';
   $('#app').innerHTML=h;
   var inp=$('#q');inp.oninput=function(){q=inp.value;lim=40;var p=inp.selectionStart;vSearch();var n=$('#q');n.focus();n.setSelectionRange(p,p)};
   document.querySelectorAll('[data-f]').forEach(function(b){b.onclick=function(){filt=b.dataset.f;lim=40;vSearch()}});
+  $('#ta').onclick=function(){S.showA=!S.showA;save();vSearch()};
   if($('#dsp'))$('#dsp').onclick=function(){speak(dw.w)};
   if($('#more'))$('#more').onclick=function(){lim+=40;vSearch()};
   bind(L)}
@@ -121,8 +135,9 @@ function vCards(){
   var pool=D.filter(function(i){return!S.known[key(i)]});
   if(!pool.length){$('#app').innerHTML='<div class="empty">🎉 أتممت حفظ كل الكلمات!<br><br><button class="btn" id="rs">ابدأ من جديد</button></div>';$('#rs').onclick=function(){S.known={};save();fc=null;render()};return}
   if(!fc||S.known[key(fc)])fc=pick(pool);
-  $('#app').innerHTML='<div class="stat">متبقٍّ '+pool.length+' كلمة</div><button class="fc" id="fc"><div class="w">'+esc(fc.w)+'</div>'+(flip?'<p class="m">'+esc(fc.m)+'</p>'+(fc.r?'<span class="ref">'+esc(fc.r)+'</span>':''):'<div class="hint">اضغط لإظهار المعنى</div>')+'</button><div class="btns" style="margin-bottom:10px"><button class="btn alt" id="s1">🔊 الكلمة</button><button class="btn alt" id="s2">🗣 الشرح</button></div>'+(flip?'<div class="btns"><button class="btn no" id="no">أراجعها</button><button class="btn ok" id="yes">عرفتها ✓</button></div>':'');
+  $('#app').innerHTML='<div class="stat">متبقٍّ '+pool.length+' كلمة</div><button class="fc" id="fc"><div class="w">'+esc(fc.w)+'</div>'+(flip?'<p class="m">'+esc(fc.m)+'</p>'+(fc.r?'<span class="ref">'+esc(fc.r)+'</span>':''):'<div class="hint">اضغط لإظهار المعنى</div>')+'</button>'+(flip&&S.showA&&fc.i?'<div class="as card" id="fcA"><button class="chip" id="fcAb">📖 عرض الشرح الكامل</button></div>':'')+'<div class="btns" style="margin-bottom:10px"><button class="btn alt" id="s1">🔊 الكلمة</button><button class="btn alt" id="s2">🗣 الشرح</button></div>'+(flip?'<div class="btns"><button class="btn no" id="no">أراجعها</button><button class="btn ok" id="yes">عرفتها ✓</button></div>':'');
   $('#fc').onclick=function(){flip=!flip;if(flip)speak(fc.w);vCards()};
+  if($('#fcAb'))$('#fcAb').onclick=function(){toggleA($('#fcAb'),$('#fcA'),fc.i)};
   $('#s1').onclick=function(){speak(fc.w)};$('#s2').onclick=function(){speak(fc.m)};
   if(flip){$('#yes').onclick=function(){S.known[key(fc)]=1;save();fc=null;flip=false;vCards()};$('#no').onclick=function(){fc=null;flip=false;vCards()}}}
 function newQ(){
@@ -151,14 +166,22 @@ function parse(t){
   out=out.filter(function(o){return o.w&&o.m&&!/^(word|الكلمة|كلمة)$/i.test(String(o.w).trim())});
   return out.map(function(o){return{w:String(o.w).trim(),m:String(o.m).trim(),r:o.r?String(o.r).trim():''}})}
 function vSet(){
-  $('#app').innerHTML='<div class="card"><b>سرعة النطق</b><input type="range" id="rt" min="0.4" max="1.2" step="0.1" value="'+S.rate+'" style="width:100%"><button class="btn alt" id="tt" style="width:100%">🔊 جرّب الصوت</button></div>'
+  $('#app').innerHTML='<div class="card"><label class="tg"><input type="checkbox" id="sa"'+(S.showA?' checked':'')+'> إظهار شرح الأصفهاني الكامل</label><p class="stat" style="margin:6px 0 0">يظهر زر «عرض الشرح الكامل» أسفل كل كلمة، ويُحمَّل الشرح عند الضغط فقط.</p></div>'+'<div class="card"><b>سرعة النطق</b><input type="range" id="rt" min="0.4" max="1.2" step="0.1" value="'+S.rate+'" style="width:100%"><button class="btn alt" id="tt" style="width:100%">🔊 جرّب الصوت</button></div>'
   +'<div class="card"><b>التقدم</b><p class="stat">كلمات محفوظة: '+Object.keys(S.known).length+' — مفضلة: '+Object.keys(S.fav).length+'</p><button class="btn no" id="rp" style="width:100%">تصفير التقدم</button></div>';
+  $('#sa').onchange=function(e){S.showA=e.target.checked;save();toast(S.showA?'تم تفعيل شرح الأصفهاني':'تم إخفاء شرح الأصفهاني')};
   $('#rt').oninput=function(e){S.rate=+e.target.value;save()};$('#tt').onclick=function(){speak(D[0].w)};
   $('#rp').onclick=function(){S.known={};S.fav={};save();toast('تم التصفير');vSet()}}
 function render(){nav();$('#cnt').textContent=D.length+' كلمة';({search:vSearch,cards:vCards,quiz:vQuiz,fav:vFav,set:vSet})[tab]()}
 if(window.speechSynthesis)speechSynthesis.getVoices();
 $('#app').innerHTML='<div class="empty">جارٍ التحميل…</div>';
-fetch('/api/words').then(function(r){return r.json()}).then(function(d){D=d;render()}).catch(function(){$('#app').innerHTML='<div class="empty">تعذر تحميل البيانات، حدّث الصفحة.</div>'});
+fetch('/api/words?full=1').then(function(r){return r.json()}).then(function(d){D=d;D.forEach(function(it){it._a=norm(it.a||it.m);AC[it.i]=it.a||'لا يوجد شرح مفصل لهذه الكلمة.'});render()}).catch(function(){$('#app').innerHTML='<div class="empty">تعذر تحميل البيانات، حدّث الصفحة.</div>'});
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then(registration => console.log('SW registered'))
+        .catch(err => console.log('SW registration failed', err));
+    });
+  }
 </script>
 </body>
 </html>
